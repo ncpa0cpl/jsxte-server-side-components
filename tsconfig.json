@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "es2020",
+    "module": "commonjs",
+    "jsx": "react-jsx",
+    "jsxImportSource": "jsxte",
+    "declaration": true,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "downlevelIteration": true,
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUncheckedIndexedAccess": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": ["src/**/*"]
+}
