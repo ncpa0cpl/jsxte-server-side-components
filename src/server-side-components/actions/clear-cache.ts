@@ -1,4 +1,4 @@
-import type { SSCComponentInstance } from "../ssc-component-types";
+import type { SSCComponentInstance } from "../ssc-types";
 
 export const clearCache = (ssc?: SSCComponentInstance<any>) => {
   if (ssc) {

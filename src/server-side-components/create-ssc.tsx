@@ -1,9 +1,9 @@
-import type { Express } from "express";
-import { Router } from "express";
+import type { Request } from "express";
 import { renderToHtmlAsync } from "jsxte";
 import { jsx } from "jsxte/jsx-runtime";
 import { v4 } from "uuid";
-import type { SSCComponent, SSCComponentProps } from "./ssc-component-types";
+import { routerState, SSCRouter } from "../express-router/router";
+import type { SSCComponent, SSCComponentProps } from "./ssc-types";
 
 declare global {
   namespace JSX {
@@ -19,22 +19,45 @@ declare global {
   }
 }
 
-const SSCRouter = Router();
-let isUsed = false;
-
-const useSSCRouter = (app: Express) => {
-  if (isUsed) return;
-
-  app.use(SSCRouter);
-  isUsed = true;
-};
-
+/**
+ * Creates a new Server Side Component.
+ *
+ * @param uniqueName A unique name used to identify this
+ *   component. It should be different for each server side component.
+ * @param Component A functional component, takes an optional
+ *   props property `request` which contains en Express `Request`
+ *   object or an undefined value. `request` is populated only if
+ *   the components is being updated per the client request, it
+ *   is always undefined during the initial render.
+ */
 export const createSSC = <P extends object>(
-  Component: JSX.Component<P> | JSX.AsyncComponent<P>,
-  urlprefix = ""
+  uniqueName: string,
+  Component:
+    | ((props: P & { request?: Request }) => JSX.Element)
+    | ((props: P & { request?: Request }) => Promise<JSX.Element>)
 ): SSCComponent<P> => {
-  const sscUID = Buffer.from(Component.name).toString("base64");
-  const url = "/" + [urlprefix, "ssc", sscUID].filter((e) => e).join("/");
+  const sscUID = Buffer.from(uniqueName).toString("base64");
+
+  let urlMemo: string | null = null;
+  const getUrl = () => {
+    if (!routerState.isRegistered) {
+      throw new Error(
+        "Server Side Components are being used but have not been registered. Make sure to register them before rendering!"
+      );
+    }
+
+    if (urlMemo !== null) {
+      return urlMemo;
+    }
+
+    urlMemo =
+      "/" +
+      [routerState.path.replace(/^\//, ""), "component", sscUID]
+        .filter((e) => e)
+        .join("/");
+
+    return urlMemo;
+  };
 
   const ServerComponent: JSX.Component<SSCComponentProps<P>> = ({
     cacheExpire,
@@ -44,7 +67,7 @@ export const createSSC = <P extends object>(
     return (
       <server-component
         data-sscuid={sscUID}
-        data-component-endpoint={url}
+        data-component-endpoint={getUrl()}
         data-expire={cacheExpire?.toString()}
         data-use-cache={useCache ? "true" : "false"}
       >
@@ -67,7 +90,7 @@ export const createSSC = <P extends object>(
       return (
         <server-component
           data-sscuid={instanceUUID}
-          data-component-endpoint={url}
+          data-component-endpoint={getUrl()}
           data-expire={cacheExpire?.toString()}
           data-use-cache={useCache ? "true" : "false"}
         >
@@ -85,19 +108,24 @@ export const createSSC = <P extends object>(
     };
   };
 
-  const add = (app: Express) => {
-    useSSCRouter(app);
-    SSCRouter.post(url, async (req, resp) => {
-      const html = await renderToHtmlAsync(Component, req.body);
+  SSCRouter.post(`/component/${sscUID}`, async (request, resp) => {
+    try {
+      const html = await renderToHtmlAsync(Component, {
+        ...request.body,
+        request,
+      });
       resp.send(html);
-    });
-  };
+    } catch (e) {
+      resp.sendStatus(500);
+    }
+  });
 
   return {
     id: sscUID,
-    url,
+    get url() {
+      return getUrl();
+    },
     newInstance,
-    add,
     Component: ServerComponent,
   };
 };

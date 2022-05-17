@@ -3,26 +3,26 @@ import type {
   SinglePropSelectorDescriptor,
 } from "./props-selector-types";
 
-export type SSCPropsFor<P extends object | any[]> = {
-  [K in keyof P]: P[K] extends [string, boolean][]
+export type SSPropsFor<P extends object | any[]> = {
+  [K in keyof P]: Exclude<P[K], undefined> extends [string, boolean][]
     ?
         | P[K]
         | ArrayPropsSelectorDescriptor<[value: string, isChecked: boolean]>
         | [
-            ...P[K],
+            ...Exclude<P[K], undefined>,
             SinglePropSelectorDescriptor<[value: string, isChecked: boolean]>
           ]
-    : P[K] extends string[] | boolean[]
+    : Exclude<P[K], undefined> extends string[] | boolean[]
     ?
         | P[K]
         | ArrayPropsSelectorDescriptor<P[K] extends (infer AT)[] ? AT : never>
         | [
-            ...P[K],
+            ...Exclude<P[K], undefined>,
             SinglePropSelectorDescriptor<P[K] extends (infer AT)[] ? AT : never>
           ]
-    : P[K] extends string | boolean
-    ? SinglePropSelectorDescriptor<P[K]> | P[K]
-    : P[K] extends object | any[]
-    ? SSCPropsFor<P[K]> | P[K]
-    : P;
+    : Exclude<P[K], undefined> extends string | boolean
+    ? SinglePropSelectorDescriptor<Exclude<P[K], undefined>> | P[K]
+    : Exclude<P[K], undefined> extends object | any[]
+    ? SSPropsFor<Exclude<P[K], undefined>> | P[K]
+    : P[K];
 };

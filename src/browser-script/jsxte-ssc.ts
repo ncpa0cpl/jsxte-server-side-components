@@ -1,7 +1,6 @@
 import type { PropsSelectorDescriptor } from "../props-selector/props-selector-types";
 
 export function jsxte_ssc_init() {
-  /* Polyfill indexOf. */
   let indexOf: <T, E extends T>(haystack: T[], elem: E) => number;
 
   if (typeof Array.prototype.indexOf === "function") {
@@ -239,7 +238,8 @@ export function jsxte_ssc_init() {
           return [...radios].find((r) => r.checked === true)?.value;
         }
         case "event": {
-          return eval(selector.selector)(event);
+          if (event) return eval(selector.selector)(event);
+          return undefined;
         }
         default:
           return undefined;
@@ -360,5 +360,28 @@ export function jsxte_ssc_init() {
     cache.clear(id);
   }
 
-  Object.assign(window, { ssc_updateComponent, ssc_clearCache });
+  function ssa_executeServerAction(
+    id: string,
+    endpoint: string,
+    paramsEnc: string,
+    useCache?: boolean,
+    expire?: number
+  ) {
+    const params = replaceSelectors(JSON.parse(window.atob(paramsEnc)));
+    const url = new URL(endpoint, window.location.origin).toString();
+
+    request({
+      id,
+      url,
+      body: params,
+      expire,
+      useCache: useCache ?? true,
+    });
+  }
+
+  Object.assign(window, {
+    ssc_updateComponent,
+    ssc_clearCache,
+    ssa_executeServerAction,
+  });
 }
